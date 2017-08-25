@@ -1,13 +1,6 @@
-a {
-  color: #3f894a;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0);
+body {
+  margin: 0 auto;
+  text-align: center;
+  padding: 15%;
 }
 
-a:hover {
-  color: #27552e;
-}
-
-h5 > a {
-  text-decoration: underline;
-}

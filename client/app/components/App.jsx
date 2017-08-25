@@ -24,7 +24,7 @@ export default class App extends React.Component {
 
   render() {
     return (
-      <div className='pure-u-1'>
+      <div className='pure-g'>
         <Websocket url='ws://192.168.0.111:5000/websocket/rps'
           onMessage={this.handleData.bind(this)} />
 
