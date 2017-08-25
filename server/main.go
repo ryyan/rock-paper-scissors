@@ -121,6 +121,9 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 			Left:  0,
 			Right: 0,
 		}
+
+		currentState.LeftTaken = false
+		currentState.RightTaken = false
 	}
 
 	// Trigger broadcast for websocket listeners
