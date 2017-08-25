@@ -53,6 +53,12 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	leftOrRight := qp.Get("lor") // Left=l, Right=r
 	choice := qp.Get("choice")   // Rock=1, Paper=10, Scissors=100
 
+	// Validate left or right
+	if leftOrRight != "l" && leftOrRight != "r" {
+		w.WriteHeader(401)
+		w.Write([]byte("Invalide left/right"))
+	}
+
 	// Validate choice
 	choiceInt, err := strconv.ParseInt(choice, 10, 64)
 	if err != nil ||
