@@ -12,3 +12,13 @@ exports.files = {
 exports.plugins = {
   babel: {presets: ['latest', 'react']}
 };
+
+exports.npm = {
+  enabled: true,
+  globals: {
+    purecss: 'purecss'
+  },
+  styles: {
+    purecss: ['build/pure-min.css']
+  }
+}
