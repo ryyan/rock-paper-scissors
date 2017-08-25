@@ -9,7 +9,7 @@ export default class Game extends React.Component {
 
   render() {
     return (
-      <div id='game' className='pure-u-1'>
+      <div id='game' className='pure-g'>
         <div id='left' className='pure-u-1-3'>
           <h1>{this.props.leftTaken ? '?' : '_'}</h1>
           <br />
