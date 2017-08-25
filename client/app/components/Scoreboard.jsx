@@ -10,6 +10,7 @@ export default class Scoreboard extends React.Component {
           <Scores wins={this.props.wins} ties={this.props.ties} />
         </div>
         <div id='top10' className='pure-u-1-2'>
+          <Games games={this.props.games} /> 
         </div>
       </div>
     );
@@ -49,3 +50,30 @@ class Scores extends React.Component {
     );
   }
 }
+
+class Games extends React.Component {
+
+  render() {
+    let gameRows = this.props.games.reverse().map((game) =>
+      <tr>
+        <td>{game.Left}</td>
+        <td>{game.Right}</td>
+      </tr>
+    );
+
+    return (
+      <table className='pure-table'>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Last 10</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gameRows}
+        </tbody>
+      </table>
+    );
+  }
+}
+

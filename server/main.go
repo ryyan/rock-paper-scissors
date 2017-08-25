@@ -27,10 +27,11 @@ var (
 		Right: 0,
 	}
 	currentState = &GameState{
-		LeftTaken:  false,
-		RightTaken: false,
-		Wins:       []int64{0, 0, 0},
-		Ties:       []int64{0, 0, 0},
+		LeftTaken:     false,
+		RightTaken:    false,
+		Wins:          []int64{0, 0, 0},
+		Ties:          []int64{0, 0, 0},
+		PreviousGames: []*GameRecord{},
 	}
 )
 
@@ -41,11 +42,17 @@ type Game struct {
 }
 
 type GameState struct {
-	LeftTaken  bool
-	RightTaken bool
-	Wins       []int64 // Rock, Paper, Scissor wins
-	Ties       []int64 // Rock, Paper, Scissor ties
+	LeftTaken     bool
+	RightTaken    bool
+	Wins          []int64 // Rock, Paper, Scissor wins
+	Ties          []int64 // Rock, Paper, Scissor ties
+	PreviousGames []*GameRecord
 	sync.Mutex
+}
+
+type GameRecord struct {
+	Left  string
+	Right string
 }
 
 func rpsHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,8 +122,19 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		gameWasPlayed = false
 	}
 
-	// Reset current game if one was played
+	// Record game and reset if one was played
 	if gameWasPlayed {
+		record := &GameRecord{
+			Left:  choiceToString(currentGame.Left),
+			Right: choiceToString(currentGame.Right),
+		}
+		currentState.PreviousGames = append(currentState.PreviousGames, record)
+
+		// Only keep the last 10 games
+		if len(currentState.PreviousGames) == 10 {
+			currentState.PreviousGames = currentState.PreviousGames[1:len(currentState.PreviousGames)]
+		}
+
 		currentGame = &Game{
 			Left:  0,
 			Right: 0,
@@ -130,6 +148,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	broadcaster.Send(true)
 	w.WriteHeader(200)
 	w.Write([]byte("OK"))
+	return
 }
 
 func rpsWebsocket(ws *websocket.Conn) {
@@ -143,6 +162,19 @@ func rpsWebsocket(ws *websocket.Conn) {
 		listener.Recv()
 		message, _ := json.Marshal(currentState)
 		io.WriteString(ws, string(message))
+	}
+}
+
+func choiceToString(choice int64) string {
+	switch choice {
+	case 1:
+		return "Rock"
+	case 10:
+		return "Paper"
+	case 100:
+		return "Scissors"
+	default:
+		return ""
 	}
 }
 

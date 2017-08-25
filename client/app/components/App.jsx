@@ -12,14 +12,15 @@ export default class App extends React.Component {
       LeftTaken: false,
       RightTaken: false,
       Wins: [0, 0, 0],
-      Ties: [0, 0, 0]
+      Ties: [0, 0, 0],
+      PreviousGames: [{}]
     }
   }
 
   handleData(data) {
     let result = JSON.parse(data);
     this.setState(result);
-    console.log(data);
+    console.log(result);
   }
 
   render() {
@@ -29,7 +30,7 @@ export default class App extends React.Component {
           onMessage={this.handleData.bind(this)} />
 
         <Game leftTaken={this.state.LeftTaken} rightTaken={this.state.RightTaken} />
-        <Scoreboard wins={this.state.Wins} ties={this.state.Ties} />
+        <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} />
       </div>
     );
   }
