@@ -3,61 +3,132 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"sync"
+	"time"
 
-	websocket "github.com/gorilla/websocket"
+	"github.com/grafov/bcast"
+	"golang.org/x/net/websocket"
 )
 
 var (
-	port     = flag.String("port", ":5000", "Service port")
-	upgrader = websocket.Upgrader{} // use default options
+	// Command line args
+	port = flag.String("port", ":5000", "Service port")
 
-	leftTaken, rightTaken            = false, false
-	rockWins, paperWins, scissorWins = 0, 0, 0
-	rockTies, paperTies, scissorTies = 0, 0, 0
+	// Global broadcast channel
+	// Used to trigger websocket pushes
+	broadcaster = bcast.NewGroup()
+
+	currentGame = &Game{
+		Left:  0,
+		Right: 0,
+	}
+	currentState = &GameState{
+		LeftTaken:  false,
+		RightTaken: false,
+		Wins:       []int64{0, 0, 0},
+		Ties:       []int64{0, 0, 0},
+	}
 )
 
 type Game struct {
-	Left  string
-	Right string
+	Left  int64 // 0=None, 1=Rock, 10=Paper, 100=Scissors
+	Right int64
+	sync.Mutex
 }
 
-type RpsResponse struct {
+type GameState struct {
 	LeftTaken  bool
 	RightTaken bool
-	RpsWins    []int // Rock, Paper, Scissor wins
-	RpsTies    []int // Rock, Paper, Scissor ties
+	Wins       []int64 // Rock, Paper, Scissor wins
+	Ties       []int64 // Rock, Paper, Scissor ties
+	sync.Mutex
 }
 
 func rpsHandler(w http.ResponseWriter, r *http.Request) {
+	qp := r.URL.Query()
+	leftOrRight := qp.Get("lor") // Left=l, Right=r
+	choice := qp.Get("choice")   // Rock=1, Paper=10, Scissors=100
+
+	// Validate choice
+	choiceInt, err := strconv.ParseInt(choice, 10, 64)
+	if err != nil ||
+		(choiceInt != 1 && choiceInt != 10 && choiceInt != 100) {
+		w.WriteHeader(400)
+		w.Write([]byte("Invalid choice"))
+	}
+
+	// Check if left or right is already taken
+	currentState.Lock()
+	defer currentState.Unlock()
+	if (leftOrRight == "l" && currentState.LeftTaken) ||
+		(leftOrRight == "r" && currentState.RightTaken) {
+		w.WriteHeader(401)
+		w.Write([]byte("Left/Right already taken"))
+	}
+
+	// Lock in choice
+	currentGame.Lock()
+	defer currentGame.Unlock()
+	if leftOrRight == "l" {
+		currentGame.Left = int64(choiceInt)
+	} else {
+		currentGame.Right = int64(choiceInt)
+	}
+
+	// Perform game logic
+	gameWasPlayed := true
+	switch currentGame.Left + currentGame.Right {
+	case 2:
+		// Rock vs Rock
+		currentState.Ties[0] = currentState.Ties[0] + 1
+	case 20:
+		// Paper vs Paper
+		currentState.Ties[1] = currentState.Ties[1] + 1
+	case 200:
+		// Scissors vs Scissors
+		currentState.Ties[2] = currentState.Ties[2] + 1
+	case 11:
+		// Rock vs Paper
+		currentState.Wins[1] = currentState.Wins[1] + 1
+	case 101:
+		// Rock vs Scissors
+		currentState.Wins[0] = currentState.Wins[0] + 1
+	case 110:
+		// Paper vs Scissors
+		currentState.Wins[2] = currentState.Wins[2] + 1
+	default:
+		gameWasPlayed = false
+	}
+
+	// Reset current game if one was played
+	if gameWasPlayed {
+		currentGame = &Game{
+			Left:  0,
+			Right: 0,
+		}
+	}
+
+	// Trigger broadcast for websocket listeners
+	broadcaster.Send(true)
+	w.WriteHeader(200)
+	w.Write([]byte("OK"))
 }
 
-func rpsWebsocket(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("upgrade:", err)
-		return
-	}
-	defer c.Close()
-
+func rpsWebsocket(ws *websocket.Conn) {
 	// Send initial response
-	response := &RpsResponse{
-		LeftTaken:  leftTaken,
-		RightTaken: rightTaken,
-		RpsWins:    []int{rockWins, paperWins, scissorWins},
-		RpsTies:    []int{rockTies, paperTies, scissorTies},
-	}
-	message, _ := json.Marshal(response)
-	err = c.WriteMessage(websocket.TextMessage, message)
-	if err != nil {
-		log.Println("write:", err)
-		return
-	}
+	message, _ := json.Marshal(currentState)
+	io.WriteString(ws, string(message))
 
 	// Send responses on change
 	for {
-		break
+		listener := broadcaster.Join()
+		listener.Recv()
+		message, _ := json.Marshal(currentState)
+		io.WriteString(ws, string(message))
 	}
 }
 
@@ -65,8 +136,12 @@ func main() {
 	// Parse command line args
 	flag.Parse()
 
+	// Start broadcaster
+	go broadcaster.Broadcast(2 * time.Minute)
+
+	// Start server
 	http.HandleFunc("/rps", rpsHandler)
-	http.HandleFunc("/websocket/rps", rpsWebsocket)
+	http.Handle("/websocket/rps", websocket.Handler(rpsWebsocket))
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../client/public"))))
 	log.Println("Serving at localhost" + *port)
 	log.Fatal(http.ListenAndServe(*port, nil))
