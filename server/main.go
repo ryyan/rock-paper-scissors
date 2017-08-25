@@ -131,7 +131,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		currentState.PreviousGames = append(currentState.PreviousGames, record)
 
 		// Only keep the last 10 games
-		if len(currentState.PreviousGames) == 10 {
+		if len(currentState.PreviousGames) == 11 {
 			currentState.PreviousGames = currentState.PreviousGames[1:len(currentState.PreviousGames)]
 		}
 
