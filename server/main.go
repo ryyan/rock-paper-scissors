@@ -22,6 +22,7 @@ var (
 	// Used to trigger websocket pushes
 	broadcaster = bcast.NewGroup()
 
+	// Game state holders
 	currentGame = &Game{
 		Left:  0,
 		Right: 0,
@@ -33,12 +34,12 @@ var (
 		Ties:          []int64{0, 0, 0},
 		PreviousGames: []*GameRecord{},
 	}
+	currentMutex sync.Mutex
 )
 
 type Game struct {
 	Left  int64 // 0=None, 1=Rock, 10=Paper, 100=Scissors
 	Right int64
-	sync.Mutex
 }
 
 type GameState struct {
@@ -47,7 +48,6 @@ type GameState struct {
 	Wins          []int64 // Rock, Paper, Scissor wins
 	Ties          []int64 // Rock, Paper, Scissor ties
 	PreviousGames []*GameRecord
-	sync.Mutex
 }
 
 type GameRecord struct {
@@ -76,9 +76,11 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Lock current game and game state
+	currentMutex.Lock()
+	defer currentMutex.Unlock()
+
 	// Check if left or right is already taken
-	currentState.Lock()
-	defer currentState.Unlock()
 	if (leftOrRight == "l" && currentState.LeftTaken) ||
 		(leftOrRight == "r" && currentState.RightTaken) {
 		w.WriteHeader(401)
@@ -87,8 +89,6 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Lock in choice
-	currentGame.Lock()
-	defer currentGame.Unlock()
 	if leftOrRight == "l" {
 		currentGame.Left = int64(choiceInt)
 		currentState.LeftTaken = true
