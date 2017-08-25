@@ -15,9 +15,6 @@ exports.plugins = {
 
 exports.npm = {
   enabled: true,
-  globals: {
-    purecss: 'purecss'
-  },
   styles: {
     purecss: ['build/pure-min.css']
   }
