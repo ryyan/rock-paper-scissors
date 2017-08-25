@@ -26,11 +26,14 @@ export default class App extends React.Component {
   render() {
     return (
       <div>
-        <Websocket url='ws://192.168.0.111:5000/websocket/rps'
-          onMessage={this.handleData.bind(this)} />
+        <div className='pure-menu pure-menu-horizontal'>
+          <h1 className='pure-menu-heading' href>Rock Paper Scissors</h1>
+        </div>
 
         <Game leftTaken={this.state.LeftTaken} rightTaken={this.state.RightTaken} />
         <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} />
+        <Websocket url='ws://192.168.0.111:5000/websocket/rps'
+          onMessage={this.handleData.bind(this)} />
       </div>
     );
   }

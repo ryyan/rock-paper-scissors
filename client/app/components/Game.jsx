@@ -12,11 +12,8 @@ export default class Game extends React.Component {
       <div id='game' className='pure-g'>
         <div id='left' className='pure-u-1-3'>
           <h1>{this.props.leftTaken ? '?' : '_'}</h1>
-          <br />
           <Button lor={'l'} choice={1} disabled={this.props.leftTaken} text='Rock' />
-          <br /><br />
           <Button lor={'l'} choice={10} disabled={this.props.leftTaken} text='Paper' />
-          <br /><br />
           <Button lor={'l'} choice={100} disabled={this.props.leftTaken} text='Scissors' />
         </div>
         <div id='mid' className='pure-u-1-3'>
@@ -24,11 +21,8 @@ export default class Game extends React.Component {
         </div>
         <div id='right' className='pure-u-1-3'>
           <h1>{this.props.rightTaken ? '?' : '_'}</h1>
-          <br />
           <Button lor={'r'} choice={1} disabled={this.props.rightTaken} text='Rock' />
-          <br /><br />
           <Button lor={'r'} choice={10} disabled={this.props.rightTaken} text='Paper' />
-          <br /><br />
           <Button lor={'r'} choice={100} disabled={this.props.rightTaken} text='Scissors' />
         </div>
       </div>

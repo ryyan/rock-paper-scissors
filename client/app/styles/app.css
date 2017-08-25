@@ -1,9 +1,13 @@
-body {
+body, table {
   margin: 0 auto;
   text-align: center;
-  padding: 15%;
 }
 
-.pure-g {
-  padding: 50px;
+button {
+  margin: 5px;
 }
+
+#game, #scoreboard {
+  padding: 30px;
+}
+
