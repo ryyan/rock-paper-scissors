@@ -75,8 +75,10 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	defer currentGame.Unlock()
 	if leftOrRight == "l" {
 		currentGame.Left = int64(choiceInt)
+		currentState.LeftTaken = true
 	} else {
 		currentGame.Right = int64(choiceInt)
+		currentState.RightTaken = true
 	}
 
 	// Perform game logic
