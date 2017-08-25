@@ -57,6 +57,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	if leftOrRight != "l" && leftOrRight != "r" {
 		w.WriteHeader(401)
 		w.Write([]byte("Invalide left/right"))
+		return
 	}
 
 	// Validate choice
@@ -65,6 +66,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		(choiceInt != 1 && choiceInt != 10 && choiceInt != 100) {
 		w.WriteHeader(400)
 		w.Write([]byte("Invalid choice"))
+		return
 	}
 
 	// Check if left or right is already taken
@@ -74,6 +76,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		(leftOrRight == "r" && currentState.RightTaken) {
 		w.WriteHeader(401)
 		w.Write([]byte("Left/Right already taken"))
+		return
 	}
 
 	// Lock in choice
