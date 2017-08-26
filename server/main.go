@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -56,10 +55,8 @@ type GameRecord struct {
 
 func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	// Lock current game and game state
-	fmt.Println("Lock")
 	currentGame.Lock()
 	defer currentGame.Unlock()
-	defer fmt.Println("Unlock")
 
 	// Parse query para
 	qp := r.URL.Query()
