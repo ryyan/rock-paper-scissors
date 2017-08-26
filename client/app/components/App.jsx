@@ -20,7 +20,6 @@ export default class App extends React.Component {
   handleData(data) {
     let result = JSON.parse(data);
     this.setState(result);
-    console.log(result);
   }
 
   render() {
