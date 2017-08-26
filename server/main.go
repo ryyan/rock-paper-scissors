@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/grafov/bcast"
 	"golang.org/x/net/websocket"
@@ -22,32 +22,31 @@ var (
 	// Used to trigger websocket pushes
 	broadcaster = bcast.NewGroup()
 
-	// Game state holders
+	// Game state
 	currentGame = &Game{
-		Left:  0,
-		Right: 0,
-	}
-	currentState = &GameState{
+		Left:          0,
+		Right:         0,
 		LeftTaken:     false,
 		RightTaken:    false,
 		Wins:          []int64{0, 0, 0},
 		Ties:          []int64{0, 0, 0},
 		PreviousGames: []*GameRecord{},
 	}
-	currentMutex sync.Mutex
+
+	// Used to marhsall game state to json once and
+	// write to all websockets
+	currentGameJson, _ = json.Marshal(currentGame)
 )
 
 type Game struct {
-	Left  int64 // 0=None, 1=Rock, 10=Paper, 100=Scissors
-	Right int64
-}
-
-type GameState struct {
+	Left          int64 `json:"-"` // 0=None, 1=Rock, 10=Paper, 100=Scissors
+	Right         int64 `json:"-"` // "-" to prevent returning as json
 	LeftTaken     bool
 	RightTaken    bool
 	Wins          []int64 // Rock, Paper, Scissor wins
 	Ties          []int64 // Rock, Paper, Scissor ties
 	PreviousGames []*GameRecord
+	sync.RWMutex
 }
 
 type GameRecord struct {
@@ -56,6 +55,13 @@ type GameRecord struct {
 }
 
 func rpsHandler(w http.ResponseWriter, r *http.Request) {
+	// Lock current game and game state
+	fmt.Println("Lock")
+	currentGame.Lock()
+	defer currentGame.Unlock()
+	defer fmt.Println("Unlock")
+
+	// Parse query para
 	qp := r.URL.Query()
 	leftOrRight := qp.Get("lor") // Left=l, Right=r
 	choice := qp.Get("choice")   // Rock=1, Paper=10, Scissors=100
@@ -76,13 +82,9 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Lock current game and game state
-	currentMutex.Lock()
-	defer currentMutex.Unlock()
-
 	// Check if left or right is already taken
-	if (leftOrRight == "l" && currentState.LeftTaken) ||
-		(leftOrRight == "r" && currentState.RightTaken) {
+	if (leftOrRight == "l" && currentGame.LeftTaken) ||
+		(leftOrRight == "r" && currentGame.RightTaken) {
 		w.WriteHeader(401)
 		w.Write([]byte("Left/Right already taken"))
 		return
@@ -91,10 +93,10 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	// Lock in choice
 	if leftOrRight == "l" {
 		currentGame.Left = int64(choiceInt)
-		currentState.LeftTaken = true
+		currentGame.LeftTaken = true
 	} else {
 		currentGame.Right = int64(choiceInt)
-		currentState.RightTaken = true
+		currentGame.RightTaken = true
 	}
 
 	// Perform game logic
@@ -102,22 +104,22 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	switch currentGame.Left + currentGame.Right {
 	case 2:
 		// Rock vs Rock
-		currentState.Ties[0] = currentState.Ties[0] + 1
+		currentGame.Ties[0] = currentGame.Ties[0] + 1
 	case 20:
 		// Paper vs Paper
-		currentState.Ties[1] = currentState.Ties[1] + 1
+		currentGame.Ties[1] = currentGame.Ties[1] + 1
 	case 200:
 		// Scissors vs Scissors
-		currentState.Ties[2] = currentState.Ties[2] + 1
+		currentGame.Ties[2] = currentGame.Ties[2] + 1
 	case 11:
 		// Rock vs Paper
-		currentState.Wins[1] = currentState.Wins[1] + 1
+		currentGame.Wins[1] = currentGame.Wins[1] + 1
 	case 101:
 		// Rock vs Scissors
-		currentState.Wins[0] = currentState.Wins[0] + 1
+		currentGame.Wins[0] = currentGame.Wins[0] + 1
 	case 110:
 		// Paper vs Scissors
-		currentState.Wins[2] = currentState.Wins[2] + 1
+		currentGame.Wins[2] = currentGame.Wins[2] + 1
 	default:
 		gameWasPlayed = false
 	}
@@ -128,24 +130,22 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 			Left:  choiceToString(currentGame.Left),
 			Right: choiceToString(currentGame.Right),
 		}
-		currentState.PreviousGames = append(currentState.PreviousGames, record)
+		currentGame.PreviousGames = append(currentGame.PreviousGames, record)
 
 		// Only keep the last 10 games
-		if len(currentState.PreviousGames) == 11 {
-			currentState.PreviousGames = currentState.PreviousGames[1:len(currentState.PreviousGames)]
+		if len(currentGame.PreviousGames) == 11 {
+			currentGame.PreviousGames = currentGame.PreviousGames[1:len(currentGame.PreviousGames)]
 		}
 
-		currentGame = &Game{
-			Left:  0,
-			Right: 0,
-		}
-
-		currentState.LeftTaken = false
-		currentState.RightTaken = false
+		currentGame.Left = 0
+		currentGame.Right = 0
+		currentGame.LeftTaken = false
+		currentGame.RightTaken = false
 	}
 
 	// Trigger broadcast for websocket listeners
-	broadcaster.Send(true)
+	currentGameJson, _ = json.Marshal(currentGame)
+	defer broadcaster.Send(true)
 	w.WriteHeader(200)
 	w.Write([]byte("OK"))
 	return
@@ -153,15 +153,13 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 
 func rpsWebsocket(ws *websocket.Conn) {
 	// Send initial response
-	message, _ := json.Marshal(currentState)
-	io.WriteString(ws, string(message))
+	io.WriteString(ws, string(currentGameJson))
 
 	// Send responses on change
 	for {
 		listener := broadcaster.Join()
 		listener.Recv()
-		message, _ := json.Marshal(currentState)
-		io.WriteString(ws, string(message))
+		io.WriteString(ws, string(currentGameJson))
 	}
 }
 
@@ -183,7 +181,7 @@ func main() {
 	flag.Parse()
 
 	// Start broadcaster
-	go broadcaster.Broadcast(2 * time.Minute)
+	go broadcaster.Broadcast(0)
 
 	// Start server
 	http.HandleFunc("/rps", rpsHandler)
