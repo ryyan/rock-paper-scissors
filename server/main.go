@@ -15,13 +15,12 @@ import (
 
 var (
 	// Command line args
-	port = flag.String("port", ":5000", "Service port")
+	port = flag.Int("port", 5000, "Service port")
 
 	// Global broadcast channel
-	// Used to trigger websocket pushes
+	// Used to trigger websocket pushes on game state changes
 	broadcaster = bcast.NewGroup()
 
-	// Game state
 	currentGame = &Game{
 		Left:          0,
 		Right:         0,
@@ -32,19 +31,29 @@ var (
 		PreviousGames: []*GameRecord{},
 	}
 
-	// Used to marhsall game state to json once and
-	// write to all websockets
+	// Used to marhsall game state to json once and write to all websockets
 	currentGameJson, _ = json.Marshal(currentGame)
 )
 
+// Game holds the global game state
 type Game struct {
-	Left          int64 `json:"-"` // 0=None, 1=Rock, 10=Paper, 100=Scissors
-	Right         int64 `json:"-"` // "-" to prevent returning as json
-	LeftTaken     bool
-	RightTaken    bool
-	Wins          []int64 // Rock, Paper, Scissor wins
-	Ties          []int64 // Rock, Paper, Scissor ties
+	// Left/Right hold the int value of rock/paper/scissor
+	Left  int64 `json:"-"` // "-" to prevent returning as json
+	Right int64 `json:"-"`
+
+	// LeftTaken/RightTaken are true if Left/Right are non-zero
+	// This is returned to the client instead of Left/Right to keep choices hidden
+	LeftTaken  bool
+	RightTaken bool
+
+	// [Rock, Paper, Scissors] wins/ties
+	Wins []int64
+	Ties []int64
+
+	// Previous games
 	PreviousGames []*GameRecord
+
+	// Mutex to ensure only one client changes game state at a time
 	sync.RWMutex
 }
 
@@ -53,12 +62,13 @@ type GameRecord struct {
 	Right string
 }
 
+// rpsHandler handles game input and logic
 func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	// Lock current game and game state
 	currentGame.Lock()
 	defer currentGame.Unlock()
 
-	// Parse query para
+	// Parse query parameters
 	qp := r.URL.Query()
 	leftOrRight := qp.Get("lor") // Left=l, Right=r
 	choice := qp.Get("choice")   // Rock=1, Paper=10, Scissors=100
@@ -66,7 +76,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate left or right
 	if leftOrRight != "l" && leftOrRight != "r" {
 		w.WriteHeader(401)
-		w.Write([]byte("Invalide left/right"))
+		w.Write([]byte("Invalid left/right"))
 		return
 	}
 
@@ -142,12 +152,15 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Trigger broadcast for websocket listeners
 	currentGameJson, _ = json.Marshal(currentGame)
-	defer broadcaster.Send(true)
 	w.WriteHeader(200)
 	w.Write([]byte("OK"))
-	return
+
+	// Do not trigger websocket broadcast until this call is returned
+	// otherwise a deadlock will occur from this client
+	broadcaster.Send(true)
 }
 
+// rpsWebsocket handler sends Game state json to clients
 func rpsWebsocket(ws *websocket.Conn) {
 	// Send initial response
 	io.WriteString(ws, string(currentGameJson))
@@ -160,6 +173,7 @@ func rpsWebsocket(ws *websocket.Conn) {
 	}
 }
 
+// choiceToString converts an int to its matching choice string
 func choiceToString(choice int64) string {
 	switch choice {
 	case 1:
@@ -180,10 +194,12 @@ func main() {
 	// Start broadcaster
 	go broadcaster.Broadcast(0)
 
-	// Start server
+	// Set endpoints
 	http.HandleFunc("/rps", rpsHandler)
 	http.Handle("/websocket/rps", websocket.Handler(rpsWebsocket))
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../client/public"))))
-	log.Println("Serving at localhost" + *port)
-	log.Fatal(http.ListenAndServe(*port, nil))
+
+	// Start server
+	log.Println("Serving at localhost:" + strconv.Itoa(*port))
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
