@@ -1,0 +1,7 @@
+.git
+
+server/server
+
+client/node_modules
+client/public
+client/npm-debug.log

@@ -10,7 +10,18 @@ exports.files = {
 };
 
 exports.plugins = {
-  babel: {presets: ['latest', 'react']}
+  replacer: {
+    dict: [
+      {
+        key: '__API_HOST__',
+        value: 'localhost:5000'
+      }
+    ]
+  },
+
+  babel: {
+    presets: ['latest', 'react']
+  }
 };
 
 exports.npm = {
@@ -18,4 +29,4 @@ exports.npm = {
   styles: {
     purecss: ['build/pure-min.css']
   }
-}
+};

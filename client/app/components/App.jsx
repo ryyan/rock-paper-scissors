@@ -8,6 +8,7 @@ export default class App extends React.Component {
 
   constructor(props) {
     super(props);
+
     this.state = {
       LeftTaken: false,
       RightTaken: false,
@@ -18,11 +19,12 @@ export default class App extends React.Component {
   }
 
   handleData(data) {
-    let result = JSON.parse(data);
-    this.setState(result);
+    this.setState(JSON.parse(data));
   }
 
   render() {
+    let wsUrl = 'ws://' + '__API_HOST__' + '/websocket/rps';
+
     return (
       <div>
         <div className='pure-menu pure-menu-horizontal'>
@@ -31,8 +33,8 @@ export default class App extends React.Component {
 
         <Game leftTaken={this.state.LeftTaken} rightTaken={this.state.RightTaken} />
         <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} />
-        <Websocket url='ws://192.168.0.111:5000/websocket/rps'
-          onMessage={this.handleData.bind(this)} />
+
+        <Websocket url={wsUrl} onMessage={this.handleData.bind(this)} />
       </div>
     );
   }

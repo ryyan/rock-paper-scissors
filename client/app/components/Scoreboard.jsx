@@ -30,23 +30,24 @@ class Scores extends React.Component {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Rock</td>
-            <td>{this.props.wins[0]}</td>
-            <td>{this.props.ties[0]}</td>
-          </tr>
-          <tr>
-            <td>Paper</td>
-            <td>{this.props.wins[1]}</td>
-            <td>{this.props.ties[1]}</td>
-          </tr>
-          <tr>
-            <td>Scissors</td>
-            <td>{this.props.wins[2]}</td>
-            <td>{this.props.ties[2]}</td>
-          </tr>
+          <Score name={'Rock'} wins={this.props.wins[0]} ties={this.props.ties[0]} />
+          <Score name={'Paper'} wins={this.props.wins[1]} ties={this.props.ties[1]} />
+          <Score name={'Scissors'} wins={this.props.wins[2]} ties={this.props.ties[2]} />
         </tbody>
       </table>
+    );
+  }
+}
+
+class Score extends React.Component {
+
+  render () {
+    return (
+      <tr>
+        <td>{this.props.name}</td>
+        <td>{this.props.wins}</td>
+        <td>{this.props.ties}</td>
+      </tr>
     );
   }
 }

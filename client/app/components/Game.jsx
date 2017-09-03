@@ -35,8 +35,10 @@ class Button extends React.Component {
   }
 
   handleClick() {
-    var request = new XMLHttpRequest();
-    request.open('GET', 'http://192.168.0.111:5000/rps?lor=' + this.props.lor + '&choice=' + this.props.choice);
+    let rpsUrl = 'http://' + '__API_HOST__' + '/rps';
+
+    let request = new XMLHttpRequest();
+    request.open('POST', rpsUrl + '?lor=' + this.props.lor + '&choice=' + this.props.choice);
     request.send();
   }
 

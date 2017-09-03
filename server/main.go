@@ -197,7 +197,7 @@ func main() {
 	// Set endpoints
 	http.HandleFunc("/rps", rpsHandler)
 	http.Handle("/websocket/rps", websocket.Handler(rpsWebsocket))
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("../client/public"))))
+	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
 
 	// Start server
 	log.Println("Serving at localhost:" + strconv.Itoa(*port))
