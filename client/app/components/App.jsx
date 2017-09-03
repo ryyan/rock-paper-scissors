@@ -23,7 +23,7 @@ export default class App extends React.Component {
   }
 
   render() {
-    let wsUrl = 'ws://' + '__API_HOST__' + '/websocket/rps';
+    let gameWsUrl = 'ws://' + '__API_HOST__' + '/rps/ws/game';
 
     return (
       <div>
@@ -32,9 +32,8 @@ export default class App extends React.Component {
         </div>
 
         <Game leftTaken={this.state.LeftTaken} rightTaken={this.state.RightTaken} />
-        <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} />
-
-        <Websocket url={wsUrl} onMessage={this.handleData.bind(this)} />
+        <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} players={this.state.CurrentPlayers} />
+        <Websocket url={gameWsUrl} onMessage={this.handleData.bind(this)} />
       </div>
     );
   }

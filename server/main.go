@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/grafov/bcast"
 	"golang.org/x/net/websocket"
@@ -17,9 +16,12 @@ var (
 	// Command line args
 	port = flag.Int("port", 5000, "Service port")
 
-	// Global broadcast channel
+	// Global broadcast channels
 	// Used to trigger websocket pushes on game state changes
-	broadcaster = bcast.NewGroup()
+	gameBroadcaster    = bcast.NewGroup()
+	playersBroadcaster = bcast.NewGroup()
+
+	currentPlayers = int64(0)
 
 	currentGame = &Game{
 		Left:          0,
@@ -30,9 +32,6 @@ var (
 		Ties:          []int64{0, 0, 0},
 		PreviousGames: []*GameRecord{},
 	}
-
-	// Used to marhsall game state to json once and write to all websockets
-	currentGameJson, _ = json.Marshal(currentGame)
 )
 
 // Game holds the global game state
@@ -150,27 +149,63 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		currentGame.RightTaken = false
 	}
 
-	// Trigger broadcast for websocket listeners
-	currentGameJson, _ = json.Marshal(currentGame)
+	// Return response for this call
 	w.WriteHeader(200)
 	w.Write([]byte("OK"))
 
 	// Do not trigger websocket broadcast until this call is returned
 	// otherwise a deadlock will occur from this client
-	broadcaster.Send(true)
+	gameBroadcaster.Send(true)
 }
 
 // rpsWebsocket handler sends Game state json to clients
 func rpsWebsocket(ws *websocket.Conn) {
 	// Send initial response
-	io.WriteString(ws, string(currentGameJson))
+	err := websocket.JSON.Send(ws, currentGame)
+	if err != nil {
+		return
+	}
 
 	// Send responses on change
+	listener := gameBroadcaster.Join()
 	for {
-		listener := broadcaster.Join()
-		listener.Recv()
-		io.WriteString(ws, string(currentGameJson))
+		listener.Recv() // Blocks until gameBroadcaster receives a message
+		err := websocket.JSON.Send(ws, currentGame)
+		if err != nil {
+			return
+		}
 	}
+}
+
+// currentPlayersWebsocket sends current number of active players (ws connections)
+func currentPlayersWebsocket(ws *websocket.Conn) {
+	// Increment current players on ws connection
+	atomic.AddInt64(&currentPlayers, 1)
+	playersBroadcaster.Send(true)
+
+	// Send initial response
+	err := websocket.JSON.Send(ws, currentPlayers)
+	if err != nil {
+		atomic.AddInt64(&currentPlayers, -1)
+		playersBroadcaster.Send(true)
+		return
+	}
+
+	go func() {
+		listener := playersBroadcaster.Join()
+		for {
+			listener.Recv()
+			err := websocket.JSON.Send(ws, currentPlayers)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	// Decrement current players on ws disconnect
+	websocket.Message.Receive(ws, nil)
+	atomic.AddInt64(&currentPlayers, -1)
+	playersBroadcaster.Send(true)
 }
 
 // choiceToString converts an int to its matching choice string
@@ -191,12 +226,14 @@ func main() {
 	// Parse command line args
 	flag.Parse()
 
-	// Start broadcaster
-	go broadcaster.Broadcast(0)
+	// Start gameBroadcaster
+	go gameBroadcaster.Broadcast(0)
+	go playersBroadcaster.Broadcast(0)
 
 	// Set endpoints
 	http.HandleFunc("/rps", rpsHandler)
-	http.Handle("/websocket/rps", websocket.Handler(rpsWebsocket))
+	http.Handle("/rps/ws/game", websocket.Handler(rpsWebsocket))
+	http.Handle("/rps/ws/players", websocket.Handler(currentPlayersWebsocket))
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
 
 	// Start server
