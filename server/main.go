@@ -231,10 +231,10 @@ func main() {
 	go playersBroadcaster.Broadcast(0)
 
 	// Set endpoints
-	http.HandleFunc("/rps", rpsHandler)
+	http.HandleFunc("/rps/play", rpsHandler)
 	http.Handle("/rps/ws/game", websocket.Handler(rpsWebsocket))
 	http.Handle("/rps/ws/players", websocket.Handler(currentPlayersWebsocket))
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
+	http.Handle("/rps", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
 
 	// Start server
 	log.Println("Serving at localhost:" + strconv.Itoa(*port))
