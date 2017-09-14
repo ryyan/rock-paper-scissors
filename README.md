@@ -4,5 +4,5 @@ Persistent RPS game written in React and Go with websockets
 
 ```
 docker build --rm -t rps .
-docker run -it -p 5000:5000 rps
+docker run -it -p 5000:5000 -p 5001:5001 rps
 ```
