@@ -2,6 +2,7 @@ FROM alpine:latest
 
 ENV GOPATH /go
 EXPOSE 5000
+EXPOSE 5001
 
 WORKDIR /app
 COPY . .

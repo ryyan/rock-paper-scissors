@@ -33,7 +33,7 @@ class CurrentPlayers extends React.Component {
   }
 
   render() {
-    let currentPlayersWsUrl = 'ws://' + '__API_HOST__' + '/rps/ws/players';
+    let currentPlayersWsUrl = 'wss://' + '__API_HOST__' + '/ws/players';
 
     return (
       <div>

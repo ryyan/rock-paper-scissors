@@ -159,7 +159,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // rpsWebsocket handler sends Game state json to clients
-func rpsWebsocket(ws *websocket.Conn) {
+func rpsWebsocketHandler(ws *websocket.Conn) {
 	// Send initial response
 	err := websocket.JSON.Send(ws, currentGame)
 	if err != nil {
@@ -178,7 +178,7 @@ func rpsWebsocket(ws *websocket.Conn) {
 }
 
 // currentPlayersWebsocket sends current number of active players (ws connections)
-func currentPlayersWebsocket(ws *websocket.Conn) {
+func currentPlayersWebsocketHandler(ws *websocket.Conn) {
 	// Increment current players on ws connection
 	atomic.AddInt64(&currentPlayers, 1)
 	playersBroadcaster.Send(true)
@@ -222,6 +222,17 @@ func choiceToString(choice int64) string {
 	}
 }
 
+func newWebsocketHandler(handler websocket.Handler) websocket.Handler {
+	// Override the websocket handshake method to make secure websocket work (wss)
+	wsServer := websocket.Server{
+		Handshake: func(config *websocket.Config, req *http.Request) error {
+			return nil
+		},
+		Handler: handler,
+	}
+	return wsServer.Handler
+}
+
 func main() {
 	// Parse command line args
 	flag.Parse()
@@ -230,13 +241,18 @@ func main() {
 	go gameBroadcaster.Broadcast(0)
 	go playersBroadcaster.Broadcast(0)
 
-	// Set endpoints
-	http.HandleFunc("/rps/play", rpsHandler)
-	http.Handle("/rps/ws/game", websocket.Handler(rpsWebsocket))
-	http.Handle("/rps/ws/players", websocket.Handler(currentPlayersWebsocket))
-	http.Handle("/rps", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
+	// Start websocket server
+	wsServerMux := http.NewServeMux()
+	wsServerMux.Handle("/ws/game", newWebsocketHandler(rpsWebsocketHandler))
+	wsServerMux.Handle("/ws/players", newWebsocketHandler(currentPlayersWebsocketHandler))
+	go func() {
+		http.ListenAndServe(":5001", wsServerMux)
+	}()
 
-	// Start server
-	log.Println("Serving at localhost:" + strconv.Itoa(*port))
-	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
+	// Start main server
+	serverMux := http.NewServeMux()
+	serverMux.HandleFunc("/play", rpsHandler)
+	serverMux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
+	log.Println("Serving at localhost:5000 and localhost:5001" )
+	log.Fatal(http.ListenAndServe(":5000", serverMux))
 }

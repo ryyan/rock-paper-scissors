@@ -35,7 +35,7 @@ class Button extends React.Component {
   }
 
   handleClick() {
-    let rpsUrl = 'http://' + '__API_HOST__' + '/rps/play';
+    let rpsUrl = 'https://' + '__API_HOST__' + '/play';
 
     let request = new XMLHttpRequest();
     request.open('POST', rpsUrl + '?lor=' + this.props.lor + '&choice=' + this.props.choice);

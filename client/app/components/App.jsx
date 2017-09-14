@@ -23,7 +23,7 @@ export default class App extends React.Component {
   }
 
   render() {
-    let gameWsUrl = 'ws://' + '__API_HOST__' + '/rps/ws/game';
+    let gameWsUrl = 'wss://' + '__API_HOST__' + '/ws/game';
 
     return (
       <div>
