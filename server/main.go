@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,23 +12,20 @@ import (
 )
 
 var (
-	// Command line args
-	port = flag.Int("port", 5000, "Service port")
-
 	// Global broadcast channels
 	// Used to trigger websocket pushes on game state changes
 	gameBroadcaster    = bcast.NewGroup()
 	playersBroadcaster = bcast.NewGroup()
 
+	// Game state
 	currentPlayers = int64(0)
-
-	currentGame = &Game{
+	currentGame    = &Game{
 		Left:          0,
 		Right:         0,
 		LeftTaken:     false,
 		RightTaken:    false,
-		Wins:          []int64{0, 0, 0},
-		Ties:          []int64{0, 0, 0},
+		Wins:          [3]int64{0, 0, 0},
+		Ties:          [3]int64{0, 0, 0},
 		PreviousGames: []*GameRecord{},
 	}
 )
@@ -46,8 +42,8 @@ type Game struct {
 	RightTaken bool
 
 	// [Rock, Paper, Scissors] wins/ties
-	Wins []int64
-	Ties []int64
+	Wins [3]int64
+	Ties [3]int64
 
 	// Previous games
 	PreviousGames []*GameRecord
@@ -127,11 +123,13 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 		// Paper vs Scissors
 		currentGame.Wins[2] = currentGame.Wins[2] + 1
 	default:
+		// Only one, left or right, was taken so far
 		gameWasPlayed = false
 	}
 
 	// Record game and reset if one was played
 	if gameWasPlayed {
+		// Record game
 		record := &GameRecord{
 			Left:  choiceToString(currentGame.Left),
 			Right: choiceToString(currentGame.Right),
@@ -143,6 +141,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 			currentGame.PreviousGames = currentGame.PreviousGames[1:len(currentGame.PreviousGames)]
 		}
 
+		// Reset game state
 		currentGame.Left = 0
 		currentGame.Right = 0
 		currentGame.LeftTaken = false
@@ -150,6 +149,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return response for this call
+	// Client will get updated game state through websocket
 	w.WriteHeader(200)
 	w.Write([]byte("OK"))
 
@@ -158,7 +158,7 @@ func rpsHandler(w http.ResponseWriter, r *http.Request) {
 	gameBroadcaster.Send(true)
 }
 
-// rpsWebsocket handler sends Game state json to clients
+// rpsWebsocketHandler sends game state to clients
 func rpsWebsocketHandler(ws *websocket.Conn) {
 	// Send initial response
 	err := websocket.JSON.Send(ws, currentGame)
@@ -177,7 +177,7 @@ func rpsWebsocketHandler(ws *websocket.Conn) {
 	}
 }
 
-// currentPlayersWebsocket sends current number of active players (ws connections)
+// currentPlayersWebsocketHandler sends current number of active players
 func currentPlayersWebsocketHandler(ws *websocket.Conn) {
 	// Increment current players on ws connection
 	atomic.AddInt64(&currentPlayers, 1)
@@ -191,6 +191,7 @@ func currentPlayersWebsocketHandler(ws *websocket.Conn) {
 		return
 	}
 
+	// Send responses on change
 	go func() {
 		listener := playersBroadcaster.Join()
 		for {
@@ -203,6 +204,7 @@ func currentPlayersWebsocketHandler(ws *websocket.Conn) {
 	}()
 
 	// Decrement current players on ws disconnect
+	// Message.Receive is assumed to block until a client sends a disconnect message
 	websocket.Message.Receive(ws, nil)
 	atomic.AddInt64(&currentPlayers, -1)
 	playersBroadcaster.Send(true)
@@ -222,37 +224,37 @@ func choiceToString(choice int64) string {
 	}
 }
 
+// newWebsocketHandler is a helper function to create custom websocket handlers
 func newWebsocketHandler(handler websocket.Handler) websocket.Handler {
-	// Override the websocket handshake method to make secure websocket work (wss)
 	wsServer := websocket.Server{
+		// Override the websocket handshake method to make secure websocket work (wss)
 		Handshake: func(config *websocket.Config, req *http.Request) error {
 			return nil
 		},
 		Handler: handler,
 	}
+
 	return wsServer.Handler
 }
 
 func main() {
-	// Parse command line args
-	flag.Parse()
-
-	// Start gameBroadcaster
+	// Start broadcaster channels
 	go gameBroadcaster.Broadcast(0)
 	go playersBroadcaster.Broadcast(0)
 
 	// Start websocket server
-	wsServerMux := http.NewServeMux()
-	wsServerMux.Handle("/ws/game", newWebsocketHandler(rpsWebsocketHandler))
-	wsServerMux.Handle("/ws/players", newWebsocketHandler(currentPlayersWebsocketHandler))
+	wsServeMux := http.NewServeMux()
+	wsServeMux.Handle("/ws/game", newWebsocketHandler(rpsWebsocketHandler))
+	wsServeMux.Handle("/ws/players", newWebsocketHandler(currentPlayersWebsocketHandler))
 	go func() {
-		http.ListenAndServe(":5001", wsServerMux)
+		log.Println("Serving websocket at localhost:5001")
+		http.ListenAndServe(":5001", wsServeMux)
 	}()
 
 	// Start main server
-	serverMux := http.NewServeMux()
-	serverMux.HandleFunc("/play", rpsHandler)
-	serverMux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
-	log.Println("Serving at localhost:5000 and localhost:5001" )
-	log.Fatal(http.ListenAndServe(":5000", serverMux))
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/play", rpsHandler)
+	serveMux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./client/public"))))
+	log.Println("Serving http at localhost:5000")
+	log.Fatal(http.ListenAndServe(":5000", serveMux))
 }

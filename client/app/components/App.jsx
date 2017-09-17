@@ -27,7 +27,7 @@ export default class App extends React.Component {
     return (
       <div>
         <div className='pure-menu pure-menu-horizontal'>
-          <h1 className='pure-menu-heading' href>Rock Paper Scissors</h1>
+          <h1 className='pure-menu-heading'>Rock Paper Scissors</h1>
           <CurrentPlayers />
         </div>
 
@@ -38,4 +38,3 @@ export default class App extends React.Component {
     );
   }
 }
-

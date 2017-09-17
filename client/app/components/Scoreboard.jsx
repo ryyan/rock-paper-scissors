@@ -77,4 +77,3 @@ class Games extends React.Component {
     );
   }
 }
-

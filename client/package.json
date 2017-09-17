@@ -1,16 +1,19 @@
 {
   "name": "rps-client",
   "private": true,
+
   "scripts": {
     "start": "brunch watch --server",
     "build": "brunch build --production"
   },
+
   "dependencies": {
     "react": "^15.6",
     "react-dom": "^15.6",
     "react-websocket": "^1.1",
     "purecss": "^1"
   },
+
   "devDependencies": {
     "brunch": "^2",
     "replacer-brunch": "^1",

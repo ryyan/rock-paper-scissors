@@ -3,7 +3,6 @@ import Websocket from 'react-websocket';
 
 export default class CurrentPlayers extends React.Component {
 
-
   constructor(props) {
     super(props);
     this.state = {
