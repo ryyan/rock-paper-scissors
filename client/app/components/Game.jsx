@@ -1,11 +1,6 @@
 import React from 'react';
-import Websocket from 'react-websocket';
 
 export default class Game extends React.Component {
-
-  constructor(props) {
-    super(props);
-  }
 
   render() {
     return (
@@ -35,10 +30,8 @@ class Button extends React.Component {
   }
 
   handleClick() {
-    let rpsUrl = 'https://' + '__API_HOST__' + '/play';
-
     let request = new XMLHttpRequest();
-    request.open('POST', rpsUrl + '?lor=' + this.props.lor + '&choice=' + this.props.choice);
+    request.open('POST', '__API_URL__/play?lor=' + this.props.lor + '&choice=' + this.props.choice);
     request.send();
   }
 

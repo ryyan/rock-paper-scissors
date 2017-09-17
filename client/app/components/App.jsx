@@ -3,6 +3,7 @@ import Websocket from 'react-websocket';
 
 import Game from './Game';
 import Scoreboard from './Scoreboard';
+import CurrentPlayers from './Players';
 
 export default class App extends React.Component {
 
@@ -23,17 +24,16 @@ export default class App extends React.Component {
   }
 
   render() {
-    let gameWsUrl = 'wss://' + '__API_HOST__' + '/ws/game';
-
     return (
       <div>
         <div className='pure-menu pure-menu-horizontal'>
           <h1 className='pure-menu-heading' href>Rock Paper Scissors</h1>
+          <CurrentPlayers />
         </div>
 
         <Game leftTaken={this.state.LeftTaken} rightTaken={this.state.RightTaken} />
         <Scoreboard wins={this.state.Wins} ties={this.state.Ties} games={this.state.PreviousGames} players={this.state.CurrentPlayers} />
-        <Websocket url={gameWsUrl} onMessage={this.handleData.bind(this)} />
+        <Websocket url={'__WEBSOCKET_URL__/ws/game'} onMessage={this.handleData.bind(this)} />
       </div>
     );
   }
