@@ -3,14 +3,14 @@
   "private": true,
 
   "scripts": {
-    "start": "brunch watch --server",
+    "watch": "brunch watch",
     "build": "brunch build --production"
   },
 
   "dependencies": {
-    "react": "^15.6",
-    "react-dom": "^15.6",
-    "react-websocket": "^1.1",
+    "react": "^16",
+    "react-dom": "^16",
+    "react-websocket": "^1",
     "purecss": "^1"
   },
 

@@ -1,20 +1,20 @@
-FROM alpine:latest
+FROM golang:alpine
 
-ENV GOPATH /go
 EXPOSE 5000
 EXPOSE 5001
 
 WORKDIR /app
 COPY . .
 
-# Install Go and Node
+# Install Node
 RUN apk update \
-    && apk add --no-cache git go gcc g++ nodejs nodejs-npm
+    && apk add --no-cache git nodejs nodejs-npm
 
 # Build client
 RUN cd client \
-    && npm install \
-    && npm run build
+    && npm install -g yarn \
+    && yarn install \
+    && yarn run build
 
 # Build server
 RUN cd server \
