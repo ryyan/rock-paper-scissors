@@ -12,9 +12,7 @@ RUN apk update \
 
 # Build client
 RUN cd client \
-    && npm install -g yarn \
-    && yarn install \
-    && yarn run build
+    && npm i
 
 # Build server
 RUN cd server \
