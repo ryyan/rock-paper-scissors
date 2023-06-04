@@ -1,0 +1,4 @@
+github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d h1:Q2+KsA/1GLC9xyLsDun3/EOJ+83rY/IHRsO1DToPrdo=
+github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d/go.mod h1:RInr+B3/Tx70hYm0rpNPMTD7vH0pBG5ny/JsHAs2KcQ=
+golang.org/x/net v0.10.0 h1:X2//UzNDwYmtCLn7To6G58Wr6f5ahEAQgKNzv9Y951M=
+golang.org/x/net v0.10.0/go.mod h1:0qNGK6F8kojg2nk9dLZ2mShWaEBan6FAoqfSigmmuDg=

@@ -8,7 +8,7 @@ COPY . .
 
 # Install Node
 RUN apk update \
-    && apk add --no-cache git nodejs nodejs-npm
+    && apk add --no-cache git nodejs npm
 
 # Build client
 RUN cd client \
@@ -17,6 +17,6 @@ RUN cd client \
 # Build server
 RUN cd server \
     && go get -d \
-    && go build
+    && go build -buildvcs=false
 
-CMD ["./server/server"]
+CMD ["./server/rock-paper-scissors"]

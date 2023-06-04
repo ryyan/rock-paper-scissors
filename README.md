@@ -17,7 +17,7 @@ docker run -it -p 5000:5000 -p 5001:5001 -v ${PWD}:/app rps sh
 cd client
 npm run watch &
 cd ..
-./server/server
+./server/rock-paper-scissors
 ```
 
 ### Run (prod)
