@@ -2,6 +2,8 @@
 
 Persistent RPS game written in React and Go with websockets
 
+https://github.com/ryyan/rock-paper-scissors/assets/4228816/1874a17b-be3f-4ab9-8d7b-ec2f3d897749
+
 ## Setup
 
 ### Build
